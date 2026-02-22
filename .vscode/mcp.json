@@ -1,0 +1,13 @@
+{
+	"servers": {
+		"mcp-tongling-transport": {
+			"type": "stdio",
+			"command": "pnpm",
+			"args": [
+				"run",
+				"start"
+			]
+		}
+	},
+	"inputs": []
+}

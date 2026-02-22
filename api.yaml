@@ -1,0 +1,509 @@
+openapi: 3.0.3
+info:
+  title: 铜陵公交查询系统 API
+  description: |
+    铜陵公交查询系统 OpenAPI 规范文档。
+
+    ## 基本信息
+    - **Base URL**: `https://wx.tlgjzgs.com`
+    - **所有请求方式**: GET
+    - **认证方式**: 无
+    - **请求头**: 无特殊要求
+
+    ## 测试发现的行为
+    - 站点名称补全仅支持拼音首字母（如 `cy` 匹配 "陈瑶湖镇"）
+    - 不存在的资源返回空数组 `[]` 而非错误
+    - 时间戳字段的有效数据仅为时(HH)和分(mm)
+    - 换乘方案中的 `LineName` 可能包含多条线路选项（格式：`{线路名}路 n站`）
+  version: 1.0.0
+  contact:
+    name: 铜陵公交
+servers:
+  - url: https://wx.tlgjzgs.com/Interact/TouchScreen
+    description: 生产环境
+
+paths:
+  /GetStationName:
+    get:
+      summary: 站点名称补全接口
+      description: |
+        根据输入的拼音首字母获取匹配的站点名称列表，仅返回前10个结果。
+
+        **注意**: 该接口仅支持拼音首字母查询，不支持中文直接查询。
+      operationId: getStationNameAutocomplete
+      parameters:
+        - name: stationName
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 站点名称的拼音首字母（如 `cy` 匹配 "陈瑶湖镇"）
+          example: "cy"
+      responses:
+        '200':
+          description: 成功返回匹配的站点名称列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                description: 匹配的站点名称列表，最多10个
+              examples:
+                success:
+                  summary: 正常响应
+                  value: ["前村姚", "产业园管委会", "陈瑶湖镇", "陈瑶湖镇政府", "陈瑶湖供电局"]
+                empty:
+                  summary: 无匹配结果
+                  value: []
+
+  /getNotice:
+    get:
+      summary: 获取通知公告接口
+      description: 获取系统公告内容，返回HTML格式或纯文本字符串
+      operationId: getNotice
+      responses:
+        '200':
+          description: 成功返回公告内容
+          content:
+            application/json:
+              schema:
+                type: string
+                description: HTML格式或纯文本的公告内容
+              examples:
+                html:
+                  summary: HTML格式公告
+                  value: "<h1><span style=\"color: rgb(255, 0, 0);font-size:24px\">居民服务一卡通（三代社保卡）乘坐公交9折优惠，详询：12333</span></h1>"
+
+  /GetLineInfoByLine:
+    get:
+      summary: 根据线路名称查询线路信息接口
+      description: 根据线路名称（如 `39`、`T3`）查询线路的基本信息，包括首末班时间、起终点站等
+      operationId: getLineInfoByLineName
+      parameters:
+        - name: lineName
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 线路名称，如 `39`、`T3`
+          example: "39"
+      responses:
+        '200':
+          description: 成功返回线路信息列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LineInfo'
+              examples:
+                success:
+                  summary: 正常响应
+                  value:
+                    - LineId: "665"
+                      AliasName: "39路"
+                      Direction: 1
+                      StartPoint: "铜陵站"
+                      EndPoint: "铜陵北站"
+                      MainFirstTime: "2026/2/21 6:00:00"
+                      MainLastTime: "2026/2/21 18:10:00"
+                      SubFirstTime: "2026/2/21 6:00:00"
+                      SubLastTime: "2026/2/21 18:10:00"
+                    - LineId: "665"
+                      AliasName: "39路"
+                      Direction: 2
+                      StartPoint: "铜陵北站"
+                      EndPoint: "铜陵站"
+                      MainFirstTime: "2026/2/21 6:00:00"
+                      MainLastTime: "2026/2/21 18:10:00"
+                      SubFirstTime: "2026/2/21 6:00:00"
+                      SubLastTime: "2026/2/21 18:10:00"
+                notFound:
+                  summary: 线路不存在
+                  value: []
+
+  /GetLineInfosByStation:
+    get:
+      summary: 根据站点查询线路信息接口
+      description: 根据站点名称查询经过该站点的所有线路信息
+      operationId: getLineInfosByStation
+      parameters:
+        - name: stationName
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 站点名称（中文）
+          example: "铜陵站"
+      responses:
+        '200':
+          description: 成功返回经过该站点的线路信息列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LineInfoWithStations'
+              examples:
+                success:
+                  summary: 正常响应
+                  value:
+                    - lineStationInfos:
+                        - LineId: "466"
+                          StationId: "596"
+                          Direction: 1
+                          SequeNum: 1
+                          StationName: "铜陵站"
+                      Name: "某线路"
+                      IsSchedule: 0
+                      UpLength: 11.4
+                      DownLength: 11.4
+                      LineId: "466"
+                      AliasName: "某线路"
+                      Direction: 1
+                      MainFirstTime: "2026/2/21 6:00:00"
+                      MainLastTime: "2026/2/21 18:10:00"
+                      SubFirstTime: "2026/2/21 6:00:00"
+                      SubLastTime: "2026/2/21 18:10:00"
+                      StartPoint: "起点站"
+                      EndPoint: "终点站"
+
+  /GetLineStationGpsData:
+    get:
+      summary: 获取线路站点列表及车辆实时位置接口
+      description: 根据线路ID和方向获取该线路的所有站点列表以及当前运行车辆的实时位置信息
+      operationId: getLineStationGpsData
+      parameters:
+        - name: lineid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 线路ID
+          example: "665"
+        - name: direction
+          in: query
+          required: true
+          schema:
+            type: integer
+            enum: [1, 2]
+          description: 方向，1为主方向，2为副方向
+          example: 1
+      responses:
+        '200':
+          description: 成功返回站点列表和车辆位置信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LineGpsData'
+              examples:
+                withVehicles:
+                  summary: 有车辆运行
+                  value:
+                    lineGpsListTemp:
+                      - LineId: "665"
+                        VehicleLicence: "皖G12345"
+                        CurrentStationId: "378"
+                        CurrentStationVehicleCount: 2
+                        IsOperate: true
+                    lineStationInfoTemp:
+                      - LineId: "665"
+                        StationId: "596"
+                        Direction: 1
+                        StationName: "铜陵站"
+                      - LineId: "665"
+                        StationId: "378"
+                        Direction: 1
+                        StationName: "龙山湖苑北"
+                noVehicles:
+                  summary: 无车辆运行
+                  value:
+                    lineGpsListTemp: []
+                    lineStationInfoTemp:
+                      - LineId: "665"
+                        StationId: "596"
+                        Direction: 1
+                        StationName: "铜陵站"
+
+  /GetLinePlanInfos:
+    get:
+      summary: 获取线路下一班计划发车时间接口
+      description: 根据线路ID和方向获取下一班计划发车时间
+      operationId: getLinePlanInfos
+      parameters:
+        - name: lineid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 线路ID
+          example: "665"
+        - name: direction
+          in: query
+          required: true
+          schema:
+            type: integer
+            enum: [1, 2]
+          description: 方向，1为主方向，2为副方向
+          example: 1
+      responses:
+        '200':
+          description: 成功返回计划发车时间
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinePlanInfo'
+              examples:
+                hasPlan:
+                  summary: 有计划发车时间
+                  value:
+                    SendTime: "05:20:00"
+                noPlan:
+                  summary: 无计划发车时间
+                  value:
+                    SendTime: ""
+
+  /GetTransferInfo:
+    get:
+      summary: 换乘方案查询接口
+      description: 根据起点站和终点站查询换乘方案
+      operationId: getTransferInfo
+      parameters:
+        - name: startStationName
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 起点站名称（中文）
+          example: "铜陵站"
+        - name: endStationName
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 终点站名称（中文）
+          example: "铜陵北站"
+      responses:
+        '200':
+          description: 成功返回换乘方案列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransferInfo'
+              examples:
+                direct:
+                  summary: 直达方案
+                  value:
+                    - StationCount: 42
+                      TransferStations:
+                        - BeginStation: "铜陵站"
+                          LineName: "39路 42站"
+                          EndStation: "铜陵北站"
+                withTransfer:
+                  summary: 需要换乘
+                  value:
+                    - StationCount: 15
+                      TransferStations:
+                        - BeginStation: "起点站A"
+                          LineName: "1路 5站"
+                          EndStation: "换乘站X"
+                        - BeginStation: "换乘站X"
+                          LineName: "12路 2站 或 19路 2站 或 26路 2站"
+                          EndStation: "终点站B"
+
+components:
+  schemas:
+    LineInfo:
+      type: object
+      description: 线路基本信息
+      properties:
+        LineId:
+          type: string
+          description: 线路ID
+          example: "665"
+        AliasName:
+          type: string
+          description: 线路别名
+          example: "39路"
+        Direction:
+          type: integer
+          description: 方向，1为主方向，2为副方向
+          enum: [1, 2]
+          example: 1
+        MainFirstTime:
+          type: string
+          description: 主方向(1)首班时间戳（格式：yyyy/MM/dd HH:mm:ss），有效数据为时(HH)和分(mm)
+          example: "2026/2/21 6:00:00"
+        MainLastTime:
+          type: string
+          description: 主方向(1)末班时间戳（格式：yyyy/MM/dd HH:mm:ss），有效数据为时(HH)和分(mm)
+          example: "2026/2/21 18:10:00"
+        SubFirstTime:
+          type: string
+          description: 副方向(2)首班时间戳（格式：yyyy/MM/dd HH:mm:ss），有效数据为时(HH)和分(mm)
+          example: "2026/2/21 6:00:00"
+        SubLastTime:
+          type: string
+          description: 副方向(2)末班时间戳（格式：yyyy/MM/dd HH:mm:ss），有效数据为时(HH)和分(mm)
+          example: "2026/2/21 18:10:00"
+        StartPoint:
+          type: string
+          description: 起点站名
+          example: "铜陵站"
+        EndPoint:
+          type: string
+          description: 终点站名
+          example: "铜陵北站"
+
+    LineStationInfo:
+      type: object
+      description: 线路站点信息
+      properties:
+        LineId:
+          type: string
+          description: 线路ID
+        StationId:
+          type: string
+          description: 站点ID
+        Direction:
+          type: integer
+          description: 方向，1为主方向，2为副方向
+          enum: [1, 2]
+        SequeNum:
+          type: integer
+          description: 该站点在该方向的线路中是第几站
+          example: 42
+        StationName:
+          type: string
+          description: 站点名
+          example: "铜陵站"
+
+    LineInfoWithStations:
+      allOf:
+        - $ref: '#/components/schemas/LineInfo'
+        - type: object
+          properties:
+            lineStationInfos:
+              type: array
+              description: 该线路的所有站点信息
+              items:
+                $ref: '#/components/schemas/LineStationInfo'
+            Name:
+              type: string
+              description: 线路名
+            IsSchedule:
+              type: integer
+              description: 是否按时刻表运行
+            UpLength:
+              type: number
+              format: float
+              description: 主方向线路长度（公里）
+              example: 11.4
+            DownLength:
+              type: number
+              format: float
+              description: 副方向线路长度（公里）
+              example: 11.4
+
+    VehicleGpsInfo:
+      type: object
+      description: 车辆GPS位置信息
+      properties:
+        LineId:
+          type: string
+          description: 线路ID
+        VehicleLicence:
+          type: string
+          description: 车牌号
+          example: "皖G12345"
+        CurrentStationId:
+          type: string
+          description: 下一站的站点ID
+        CurrentStationVehicleCount:
+          type: integer
+          description: 目前下一站为该站点的车辆数（不限线路）
+          example: 1
+        IsOperate:
+          type: boolean
+          description: 是否在运营中
+          example: true
+
+    LineStationInfoTemp:
+      type: object
+      description: 线路站点简要信息
+      properties:
+        LineId:
+          type: string
+          description: 线路ID
+        StationId:
+          type: string
+          description: 站点ID
+        Direction:
+          type: integer
+          description: 方向，1为主方向，2为副方向
+          enum: [1, 2]
+        StationName:
+          type: string
+          description: 站点名
+          example: "铜陵站"
+
+    LineGpsData:
+      type: object
+      description: 线路站点列表及车辆实时位置数据
+      properties:
+        lineGpsListTemp:
+          type: array
+          description: 当前运行车辆的GPS信息列表（可能为空）
+          items:
+            $ref: '#/components/schemas/VehicleGpsInfo'
+        lineStationInfoTemp:
+          type: array
+          description: 该线路的所有站点列表
+          items:
+            $ref: '#/components/schemas/LineStationInfoTemp'
+
+    LinePlanInfo:
+      type: object
+      description: 线路计划发车时间信息
+      properties:
+        SendTime:
+          type: string
+          description: 下一班计划发车时间（格式：HH:mm:ss），空字符串表示无计划
+          example: "05:20:00"
+
+    TransferStation:
+      type: object
+      description: 换乘站点信息
+      properties:
+        BeginStation:
+          type: string
+          description: 起点站/换乘站
+          example: "铜陵站"
+        LineName:
+          type: string
+          description: |
+            乘坐线路名及站数。
+            格式：`{线路名}路 n站`
+            可能包含多条线路选项，用"或"连接
+          example: "39路 42站"
+        EndStation:
+          type: string
+          description: 换乘站/终点站
+          example: "铜陵北站"
+
+    TransferInfo:
+      type: object
+      description: 换乘方案信息
+      properties:
+        StationCount:
+          type: integer
+          description: 总经过站数，是各LineName内最少的n站相加总值
+          example: 10
+        TransferStations:
+          type: array
+          description: 换乘站点列表
+          items:
+            $ref: '#/components/schemas/TransferStation'

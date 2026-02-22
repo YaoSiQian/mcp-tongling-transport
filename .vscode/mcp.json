@@ -2,10 +2,9 @@
 	"servers": {
 		"mcp-tongling-transport": {
 			"type": "stdio",
-			"command": "pnpm",
+			"command": "node",
 			"args": [
-				"run",
-				"start"
+				"dist/index.js"
 			]
 		}
 	},
